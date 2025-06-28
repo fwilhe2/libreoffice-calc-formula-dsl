@@ -101,7 +101,7 @@ type Formula struct {
 }
 
 func main() {
-	dat, _ := os.ReadFile("sample.dsl")
+	dat, _ := os.ReadFile("samples/sample.dsl")
 	source := string(dat)
 
 	constants, formulas := parseDSL(source)
@@ -132,7 +132,7 @@ func main() {
 
 	// create fods file
 	flatOdsString := rb.MakeFlatOds(spreadsheet)
-	os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644)
+	os.WriteFile("samples/myfile.fods", []byte(flatOdsString), 0o644)
 }
 
 func parseDSL(src string) (map[string]string, map[string]Formula) {
