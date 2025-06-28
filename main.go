@@ -36,6 +36,7 @@ type FunctionCall struct {
 func (n Number) Compile(_ map[string]string) string {
 	return n.Value
 }
+
 func (n Number) String() string {
 	return n.Value
 }
@@ -46,6 +47,7 @@ func (v Variable) Compile(argMap map[string]string) string {
 	}
 	return v.Name
 }
+
 func (v Variable) String() string {
 	return v.Name
 }
@@ -53,6 +55,7 @@ func (v Variable) String() string {
 func (b BinaryOp) Compile(argMap map[string]string) string {
 	return "(" + b.Left.Compile(argMap) + b.Operator + b.Right.Compile(argMap) + ")"
 }
+
 func (b BinaryOp) String() string {
 	return "(" + b.Left.String() + " " + b.Operator + " " + b.Right.String() + ")"
 }
@@ -94,8 +97,10 @@ type Formula struct {
 	Body Expr
 }
 
-var constants = map[string]string{}
-var formulas = map[string]Formula{}
+var (
+	constants = map[string]string{}
+	formulas  = map[string]Formula{}
+)
 
 func main() {
 	source := `
