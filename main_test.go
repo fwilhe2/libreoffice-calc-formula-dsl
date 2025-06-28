@@ -12,7 +12,7 @@ func assert(t *testing.T, condition bool, message string) {
 	}
 }
 
-func TestParseCsv(t *testing.T) {
+func TestParseDsl(t *testing.T) {
 	expectedConstants := make(map[string]string)
 	expectedConstants["foo"] = "1"
 	expectedFormulas := make(map[string]Formula)
@@ -21,11 +21,8 @@ func TestParseCsv(t *testing.T) {
 	source := "let foo = 1\ndefine bar(baz) = foo"
 	actualConstants, actualFormulas := parseDSL(source)
 
-	fmt.Println("constants:", actualConstants)
-	fmt.Println("constants:", expectedConstants)
-	fmt.Println("formulas:", actualFormulas)
-	fmt.Println("formulas:", expectedFormulas)
-
-	assert(t, maps.Equal(actualConstants, expectedConstants), "foo")
+	assert(t, maps.Equal(actualConstants, expectedConstants), fmt.Sprintf("Expected %v to equal %v", actualConstants, expectedConstants))
+	assert(t, actualFormulas["bar"].Args[0] == expectedFormulas["bar"].Args[0], fmt.Sprintf("Expected %v to equal %v", actualFormulas["bar"].Args[0], expectedFormulas["bar"].Args[0]))
+	assert(t, actualFormulas["bar"].Body.String() == expectedFormulas["bar"].Body.String(), fmt.Sprintf("Expected %v to equal %v", actualFormulas["bar"].Body.String(), expectedFormulas["bar"].Body.String()))
 	// assert(t, maps.Equal(actualFormulas, expectedFormulas), "foo")
 }
