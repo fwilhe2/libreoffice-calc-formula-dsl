@@ -13,7 +13,7 @@ import (
 // Expression Types
 
 type Expr interface {
-	Compile(argMap map[string]string) string
+	Compile(argMap map[string]string, formulas map[string]Formula) string
 	String() string
 }
 
@@ -36,7 +36,7 @@ type FunctionCall struct {
 	Args []Expr
 }
 
-func (n Number) Compile(_ map[string]string) string {
+func (n Number) Compile(_ map[string]string, formulas map[string]Formula) string {
 	return n.Value
 }
 
@@ -44,7 +44,7 @@ func (n Number) String() string {
 	return n.Value
 }
 
-func (v Variable) Compile(argMap map[string]string) string {
+func (v Variable) Compile(argMap map[string]string, formulas map[string]Formula) string {
 	if val, ok := argMap[v.Name]; ok {
 		return val
 	}
@@ -55,15 +55,15 @@ func (v Variable) String() string {
 	return v.Name
 }
 
-func (b BinaryOp) Compile(argMap map[string]string) string {
-	return "(" + b.Left.Compile(argMap) + b.Operator + b.Right.Compile(argMap) + ")"
+func (b BinaryOp) Compile(argMap map[string]string, formulas map[string]Formula) string {
+	return "(" + b.Left.Compile(argMap, formulas) + b.Operator + b.Right.Compile(argMap, formulas) + ")"
 }
 
 func (b BinaryOp) String() string {
 	return "(" + b.Left.String() + " " + b.Operator + " " + b.Right.String() + ")"
 }
 
-func (f FunctionCall) Compile(argMap map[string]string) string {
+func (f FunctionCall) Compile(argMap map[string]string, formulas map[string]Formula) string {
 	formula, ok := formulas[f.Name]
 	if !ok {
 		panic("Unknown function: " + f.Name)
@@ -74,7 +74,7 @@ func (f FunctionCall) Compile(argMap map[string]string) string {
 
 	localArgs := map[string]string{}
 	for i, arg := range formula.Args {
-		localArgs[arg] = f.Args[i].Compile(argMap)
+		localArgs[arg] = f.Args[i].Compile(argMap, formulas)
 	}
 
 	for k, v := range argMap {
@@ -83,7 +83,7 @@ func (f FunctionCall) Compile(argMap map[string]string) string {
 		}
 	}
 
-	return formula.Body.Compile(localArgs)
+	return formula.Body.Compile(localArgs, formulas)
 }
 
 func (f FunctionCall) String() string {
@@ -100,22 +100,20 @@ type Formula struct {
 	Body Expr
 }
 
-var (
-	constants = map[string]string{}
-	formulas  = map[string]Formula{}
-)
-
 func main() {
 	dat, _ := os.ReadFile("sample.dsl")
 	source := string(dat)
 
-	parseDSL(source)
+	constants, formulas := parseDSL(source)
+
+	fmt.Println("constants:", constants)
+	fmt.Println("formulas:", formulas)
 
 	fmt.Println("\nPretty-Printed AST for 'final_price':")
 	f := formulas["final_price"]
 	PrintAST(f.Body, "")
 
-	compiled := compileFormula("final_price", []string{"PRICE", "DISCOUNT"})
+	compiled := compileFormula("final_price", []string{"PRICE", "DISCOUNT"}, constants, formulas)
 	fmt.Println("\nLibreOffice Calc Formula:\n", compiled)
 
 	inputCells := [][]rb.Cell{
@@ -137,7 +135,9 @@ func main() {
 	os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644)
 }
 
-func parseDSL(src string) {
+func parseDSL(src string) (map[string]string, map[string]Formula) {
+	constants := make(map[string]string)
+	formulas := make(map[string]Formula)
 	lines := strings.Split(src, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -148,12 +148,13 @@ func parseDSL(src string) {
 			parts := strings.SplitN(line[len("let "):], "=", 2)
 			constants[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		} else if strings.HasPrefix(line, "define ") {
-			parseFormula(line)
+			parseFormula(line, formulas)
 		}
 	}
+	return constants, formulas
 }
 
-func parseFormula(line string) {
+func parseFormula(line string, formulas map[string]Formula) map[string]Formula {
 	parts := strings.SplitN(line[len("define "):], "=", 2)
 	signature := strings.TrimSpace(parts[0])
 	body := strings.TrimSpace(parts[1])
@@ -170,9 +171,10 @@ func parseFormula(line string) {
 	parser := NewParser(body)
 	expr := parser.ParseExpression()
 	formulas[name] = Formula{Args: args, Body: expr}
+	return formulas
 }
 
-func compileFormula(name string, argValues []string) string {
+func compileFormula(name string, argValues []string, constants map[string]string, formulas map[string]Formula) string {
 	formula, ok := formulas[name]
 	if !ok {
 		panic("Unknown formula: " + name)
@@ -189,7 +191,7 @@ func compileFormula(name string, argValues []string) string {
 		argMap[k] = v
 	}
 
-	result := formula.Body.Compile(argMap)
+	result := formula.Body.Compile(argMap, formulas)
 	result = strings.ReplaceAll(result, " ", "")
 	return "=" + result
 }
