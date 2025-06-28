@@ -8,3 +8,6 @@ build:
 
 test:
 	go test -v ./...
+
+demo:
+	./libreoffice-calc-formula-dsl
