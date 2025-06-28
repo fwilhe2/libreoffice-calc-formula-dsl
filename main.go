@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"unicode"
+
+	rb "github.com/fwilhe2/rechenbrett"
 )
 
 // Expression Types
@@ -103,12 +106,8 @@ var (
 )
 
 func main() {
-	source := `
-		let TAX_RATE = 0.19
-		define net_price(gross_price) = gross_price / (1 + TAX_RATE)
-		define discount(price, percent) = price * (1 - percent / 100)
-		define final_price(price, percent) = net_price(discount(price, percent))
-	`
+	dat, _ := os.ReadFile("sample.dsl")
+	source := string(dat)
 
 	parseDSL(source)
 
@@ -116,8 +115,26 @@ func main() {
 	f := formulas["final_price"]
 	PrintAST(f.Body, "")
 
-	compiled := compileFormula("final_price", []string{"A1", "A2"})
+	compiled := compileFormula("final_price", []string{"PRICE", "DISCOUNT"})
 	fmt.Println("\nLibreOffice Calc Formula:\n", compiled)
+
+	inputCells := [][]rb.Cell{
+		{
+			rb.MakeRangeCell("222.22", "currency", "PRICE"),
+		},
+		{
+			rb.MakeRangeCell("0.4223", "percentage", "DISCOUNT"),
+		},
+		{
+			rb.MakeCell(compiled, "formula"),
+		},
+	}
+
+	spreadsheet := rb.MakeSpreadsheet(inputCells)
+
+	// create fods file
+	flatOdsString := rb.MakeFlatOds(spreadsheet)
+	os.WriteFile("myfile.fods", []byte(flatOdsString), 0o644)
 }
 
 func parseDSL(src string) {
